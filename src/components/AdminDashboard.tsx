@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment, PaymentStatus, AppointmentType, PaymentMethod } from '../types';
 import {
-  getAppointmentsFromStorage,
-  updatePaymentStatusInStorage,
-  updateAppointmentStatusInStorage,
-  deleteAppointmentFromStorage,
+  getAllAppointments,
+  updatePaymentStatus,
+  deleteAppointment,
   createAppointment,
-  resetToSeedData,
-} from '../lib/storage';
+} from '../lib/supabase-storage';
 import { CLINIC_CONFIG } from '../data/clinicData';
 import {
   Users,
@@ -58,8 +56,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onViewR
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethod>('Pay at Clinic');
   const [addError, setAddError] = useState<string | null>(null);
 
-  const refreshData = () => {
-    setAppointments(getAppointmentsFromStorage());
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const refreshData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getAllAppointments();
+      setAppointments(data);
+    } catch (err) {
+      console.error('Failed to load appointments:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -88,27 +96,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onViewR
   const pendingCount = appointmentsForSelectedDate.filter((a) => a.paymentStatus === 'Pending Payment').length;
   const todayRevenue = paidCount * CLINIC_CONFIG.consultationFee;
 
-  const handleTogglePaymentStatus = (apt: Appointment) => {
+  const handleTogglePaymentStatus = async (apt: Appointment) => {
     const nextStatus: PaymentStatus = apt.paymentStatus === 'Paid' ? 'Pending Payment' : 'Paid';
-    updatePaymentStatusInStorage(apt.id, nextStatus);
-    refreshData();
+    try {
+      await updatePaymentStatus(apt.id, nextStatus);
+      await refreshData();
+    } catch (err) {
+      console.error('Failed to update payment status:', err);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to cancel this appointment token?')) {
-      deleteAppointmentFromStorage(id);
-      refreshData();
+      try {
+        await deleteAppointment(id);
+        await refreshData();
+      } catch (err) {
+        console.error('Failed to delete appointment:', err);
+      }
     }
   };
 
-  const handleReset = () => {
-    if (confirm('Reset appointments to default demo records?')) {
-      resetToSeedData();
-      refreshData();
-    }
-  };
-
-  const handleAddWalkIn = (e: React.FormEvent) => {
+  const handleAddWalkIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError(null);
 
@@ -117,21 +126,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onViewR
       return;
     }
 
-    const res = createAppointment({
-      fullName: newPatientName,
-      phone: newPatientPhone,
-      appointmentDate: selectedDate,
-      appointmentType: newAptType,
-      paymentMethod: newPaymentMethod,
-    });
+    try {
+      const res = await createAppointment({
+        fullName: newPatientName,
+        phone: newPatientPhone,
+        appointmentDate: selectedDate,
+        appointmentType: newAptType,
+        paymentMethod: newPaymentMethod,
+      });
 
-    if (res.success) {
-      refreshData();
-      setShowAddModal(false);
-      setNewPatientName('');
-      setNewPatientPhone('');
-    } else {
-      setAddError(res.message || 'Failed to issue token.');
+      if (res.success) {
+        await refreshData();
+        setShowAddModal(false);
+        setNewPatientName('');
+        setNewPatientPhone('');
+      } else {
+        setAddError(res.message || 'Failed to issue token.');
+      }
+    } catch (err) {
+      setAddError('Network error. Please try again.');
+      console.error(err);
     }
   };
 
@@ -164,7 +178,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onViewR
           </button>
 
           <button
-            onClick={handleReset}
+            onClick={() => refreshData()}
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1"
             title="Reset Data"
           >

@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CLINIC_CONFIG, PAYMENT_ACCOUNTS } from '../data/clinicData';
 import { AppointmentType, PaymentMethod, Appointment } from '../types';
-import { getBookedTokensCount, createAppointment, getNextAvailableToken } from '../lib/storage';
+import {
+  getBookedTokensCount,
+  createAppointment,
+} from '../lib/supabase-storage';
 import { Calendar, User, Phone, CheckCircle, AlertCircle, Clock, CreditCard, ShieldCheck, ArrowRight, Wallet, Building2, Ticket, CheckCircle2 } from 'lucide-react';
 
 interface AppointmentBookingProps {
@@ -37,10 +40,28 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Dynamic token statistics for the chosen date
-  const bookedCount = getBookedTokensCount(appointmentDate);
+  // Async token statistics for the chosen date (loaded from Supabase)
+  const [bookedCount, setBookedCount] = useState<number>(0);
+  const [isLoadingTokens, setIsLoadingTokens] = useState<boolean>(true);
+
+  const refreshTokenCount = useCallback(async () => {
+    setIsLoadingTokens(true);
+    try {
+      const count = await getBookedTokensCount(appointmentDate);
+      setBookedCount(count);
+    } catch {
+      // silently keep previous value on network error
+    } finally {
+      setIsLoadingTokens(false);
+    }
+  }, [appointmentDate]);
+
+  useEffect(() => {
+    refreshTokenCount();
+  }, [refreshTokenCount]);
+
   const availableCount = Math.max(0, CLINIC_CONFIG.dailyLimit - bookedCount);
-  const nextTokenNumber = getNextAvailableToken(appointmentDate);
+  const nextTokenNumber = bookedCount < CLINIC_CONFIG.dailyLimit ? bookedCount + 1 : null;
   const isFullyBooked = bookedCount >= CLINIC_CONFIG.dailyLimit;
 
   // Check if selected date is a Sunday
@@ -60,7 +81,7 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
     }
   }, [initialService]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -85,26 +106,23 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
       return;
     }
 
-    if (paymentMethod !== 'Pay at Clinic' && !transactionRef.trim()) {
-      // Friendly prompt for transaction ID, or generate auto reference
-      setTransactionRef('EP/JC-' + Math.floor(100000 + Math.random() * 900000));
-    }
+    const resolvedRef =
+      paymentMethod !== 'Pay at Clinic'
+        ? (transactionRef.trim() || 'TRX-' + Date.now().toString().slice(-6))
+        : undefined;
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const res = createAppointment({
+    try {
+      const res = await createAppointment({
         fullName,
         phone,
-        email,
         appointmentDate,
         appointmentType,
         paymentMethod,
-        transactionRef: paymentMethod !== 'Pay at Clinic' ? (transactionRef || 'TRX-' + Date.now().toString().slice(-6)) : undefined,
+        transactionRef: resolvedRef,
         notes,
       });
-
-      setIsSubmitting(false);
 
       if (res.success && res.appointment) {
         onAppointmentCreated(res.appointment);
@@ -114,10 +132,16 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
         setEmail('');
         setTransactionRef('');
         setNotes('');
+        // Refresh token counter to reflect the new booking
+        await refreshTokenCount();
       } else {
         setErrorMsg(res.message || 'Failed to generate token. Please try again.');
       }
-    }, 400);
+    } catch {
+      setErrorMsg('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const appointmentTypeOptions: AppointmentType[] = [

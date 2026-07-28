@@ -12,7 +12,7 @@ import { ContactSection } from './components/ContactSection';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 import { Appointment } from './types';
-import { getBookedTokensCount } from './lib/storage';
+import { getBookedTokensCount } from './lib/supabase-storage';
 import { CLINIC_CONFIG } from './data/clinicData';
 
 export default function App() {
@@ -31,10 +31,14 @@ export default function App() {
 
   const [todayAvailable, setTodayAvailable] = useState<number>(30);
 
-  const updateTokensCount = () => {
+  const updateTokensCount = async () => {
     const todayStr = getTodayString();
-    const booked = getBookedTokensCount(todayStr);
-    setTodayAvailable(Math.max(0, CLINIC_CONFIG.dailyLimit - booked));
+    try {
+      const booked = await getBookedTokensCount(todayStr);
+      setTodayAvailable(Math.max(0, CLINIC_CONFIG.dailyLimit - booked));
+    } catch {
+      // keep previous value on network error
+    }
   };
 
   useEffect(() => {
