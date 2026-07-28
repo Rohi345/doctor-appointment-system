@@ -1,7 +1,7 @@
 import { ClinicConfig, MedicalService, PatientTestimonial, FaqItem, Appointment } from '../types';
-import drImage from '../assets/images/dr_rohail_danish_1785247339258.jpg';
 import heroImage from '../assets/images/clinic_hero_banner_1785247361331.jpg';
-import treatmentImage from '../assets/images/derma_treatment_room_1785247379744.jpg';
+const drImage = heroImage;
+const treatmentImage = heroImage;
 
 export const CLINIC_CONFIG: ClinicConfig & { doctorImg: string; heroImg: string; treatmentImg: string } = {
   name: 'AL KHAIR SKIN CLINIC',
