@@ -1,0 +1,6 @@
+{
+  "name": "Al Khair Skin Clinic",
+  "description": "Doctor Appointment Management & Clinic Website for Dr. Rohail Danish, Consultant Dermatologist in Dera Ismail Khan, KP, Pakistan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
