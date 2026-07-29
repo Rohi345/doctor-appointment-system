@@ -68,7 +68,7 @@ export function createAppointment(input: CreateAppointmentInput): { success: boo
   }
 
   const nextToken = dateAppointments.length + 1;
-  const paymentStatus: PaymentStatus = input.paymentMethod === 'Pay at Clinic' ? 'Pending Payment' : 'Paid';
+  const paymentStatus: PaymentStatus = 'Pending';
 
   const newAppointment: Appointment = {
     id: 'apt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),

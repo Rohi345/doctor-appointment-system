@@ -7,9 +7,9 @@ export type AppointmentType =
   | 'Skin Infection & Procedures'
   | 'Follow-up Visit';
 
-export type PaymentMethod = 'Easypaisa' | 'JazzCash' | 'Bank Transfer' | 'Pay at Clinic';
+export type PaymentMethod = 'EasyPaisa' | 'JazzCash' | 'Cash at Clinic';
 
-export type PaymentStatus = 'Paid' | 'Pending Payment';
+export type PaymentStatus = 'Pending' | 'Paid' | 'Rejected';
 
 export type AppointmentStatus = 'Confirmed' | 'Completed' | 'Cancelled';
 

@@ -129,8 +129,7 @@ export async function createAppointment(
     }
 
     const tokenNumber = count + 1;
-    const paymentStatus: PaymentStatus =
-      input.paymentMethod === 'Pay at Clinic' ? 'Pending Payment' : 'Paid';
+    const paymentStatus: PaymentStatus = 'Pending';
 
     const { data, error } = await supabase
       .from('appointments')

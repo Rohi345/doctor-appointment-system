@@ -5,7 +5,7 @@ import {
   getBookedTokensCount,
   createAppointment,
 } from '../lib/supabase-storage';
-import { Calendar, User, Phone, CheckCircle, AlertCircle, Clock, CreditCard, ShieldCheck, ArrowRight, Wallet, Building2, Ticket, CheckCircle2 } from 'lucide-react';
+import { Calendar, User, Phone, CheckCircle, AlertCircle, Clock, CreditCard, ShieldCheck, ArrowRight, Wallet, Building2, Ticket, CheckCircle2, Copy } from 'lucide-react';
 
 interface AppointmentBookingProps {
   initialService?: string;
@@ -33,9 +33,10 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
   const [appointmentType, setAppointmentType] = useState<AppointmentType>(
     (initialService as AppointmentType) || 'Dermatology Consultation'
   );
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Easypaisa');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash at Clinic');
   const [transactionRef, setTransactionRef] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -81,6 +82,20 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
     }
   }, [initialService]);
 
+  // Reset transaction ref when switching to Cash at Clinic
+  useEffect(() => {
+    if (paymentMethod === 'Cash at Clinic') {
+      setTransactionRef('');
+    }
+  }, [paymentMethod]);
+
+  const handleCopyNumber = (number: string) => {
+    navigator.clipboard.writeText(number.replace(/-/g, '')).then(() => {
+      setCopiedNumber(number);
+      setTimeout(() => setCopiedNumber(null), 2000);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -106,10 +121,13 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
       return;
     }
 
-    const resolvedRef =
-      paymentMethod !== 'Pay at Clinic'
-        ? (transactionRef.trim() || 'TRX-' + Date.now().toString().slice(-6))
-        : undefined;
+    // Transaction ID is required for online payments
+    if ((paymentMethod === 'EasyPaisa' || paymentMethod === 'JazzCash') && !transactionRef.trim()) {
+      setErrorMsg(`Please enter your ${paymentMethod} Transaction ID to confirm your payment.`);
+      return;
+    }
+
+    const resolvedRef = transactionRef.trim() || undefined;
 
     setIsSubmitting(true);
 
@@ -152,6 +170,13 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
     'Eczema & Psoriasis',
     'Skin Infection & Procedures',
     'Follow-up Visit',
+  ];
+
+  // Payment method display config
+  const paymentOptions: { method: PaymentMethod; label: string; badge: string; badgeColor: string }[] = [
+    { method: 'Cash at Clinic', label: 'Cash at Clinic', badge: 'Pay on Arrival', badgeColor: 'text-amber-600' },
+    { method: 'EasyPaisa', label: 'EasyPaisa', badge: 'Online Payment', badgeColor: 'text-emerald-600' },
+    { method: 'JazzCash', label: 'JazzCash', badge: 'Online Payment', badgeColor: 'text-rose-600' },
   ];
 
   return (
@@ -254,39 +279,58 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
 
               <div className="space-y-3 text-xs">
                 {/* Easypaisa */}
-                <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100 space-y-1">
+                <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100 space-y-1.5">
                   <div className="flex items-center justify-between font-bold text-emerald-900">
                     <span className="flex items-center gap-1.5">
                       <Wallet className="w-4 h-4 text-emerald-600" />
-                      Easypaisa
+                      EasyPaisa
                     </span>
-                    <span className="text-emerald-700 font-mono text-sm">{PAYMENT_ACCOUNTS.easypaisa.accountNumber}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyNumber(PAYMENT_ACCOUNTS.easypaisa.accountNumber)}
+                      className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 transition-colors"
+                      title="Copy number"
+                    >
+                      <span className="font-mono text-sm">{PAYMENT_ACCOUNTS.easypaisa.accountNumber}</span>
+                      <Copy className="w-3 h-3 ml-0.5" />
+                    </button>
                   </div>
-                  <p className="text-slate-600">Title: {PAYMENT_ACCOUNTS.easypaisa.accountTitle}</p>
+                  <p className="text-slate-600">Account Name: <strong>{PAYMENT_ACCOUNTS.easypaisa.accountTitle}</strong></p>
+                  {copiedNumber === PAYMENT_ACCOUNTS.easypaisa.accountNumber && (
+                    <p className="text-emerald-700 text-[11px] font-semibold">✓ Number copied!</p>
+                  )}
                 </div>
 
                 {/* JazzCash */}
-                <div className="p-3 rounded-xl bg-rose-50/60 border border-rose-100 space-y-1">
+                <div className="p-3 rounded-xl bg-rose-50/60 border border-rose-100 space-y-1.5">
                   <div className="flex items-center justify-between font-bold text-rose-900">
                     <span className="flex items-center gap-1.5">
                       <Wallet className="w-4 h-4 text-rose-600" />
                       JazzCash
                     </span>
-                    <span className="text-rose-700 font-mono text-sm">{PAYMENT_ACCOUNTS.jazzcash.accountNumber}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyNumber(PAYMENT_ACCOUNTS.jazzcash.accountNumber)}
+                      className="flex items-center gap-1 text-rose-700 hover:text-rose-900 transition-colors"
+                      title="Copy number"
+                    >
+                      <span className="font-mono text-sm">{PAYMENT_ACCOUNTS.jazzcash.accountNumber}</span>
+                      <Copy className="w-3 h-3 ml-0.5" />
+                    </button>
                   </div>
-                  <p className="text-slate-600">Title: {PAYMENT_ACCOUNTS.jazzcash.accountTitle}</p>
+                  <p className="text-slate-600">Account Name: <strong>{PAYMENT_ACCOUNTS.jazzcash.accountTitle}</strong></p>
+                  {copiedNumber === PAYMENT_ACCOUNTS.jazzcash.accountNumber && (
+                    <p className="text-rose-700 text-[11px] font-semibold">✓ Number copied!</p>
+                  )}
                 </div>
 
-                {/* Bank Transfer */}
-                <div className="p-3 rounded-xl bg-sky-50/60 border border-sky-100 space-y-1">
-                  <div className="flex items-center justify-between font-bold text-sky-900">
-                    <span className="flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4 text-sky-600" />
-                      Meezan Bank
-                    </span>
-                    <span className="text-sky-800 font-mono text-xs">{PAYMENT_ACCOUNTS.bank.accountNumber}</span>
+                {/* Cash note */}
+                <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-100 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                    <Building2 className="w-4 h-4 text-amber-600" />
+                    Cash at Clinic
                   </div>
-                  <p className="text-slate-600">IBAN: {PAYMENT_ACCOUNTS.bank.iban}</p>
+                  <p className="text-slate-600 text-[11px]">Pay PKR 1,000 in cash at the clinic counter on arrival. No advance payment required.</p>
                 </div>
               </div>
             </div>
@@ -385,54 +429,118 @@ export const AppointmentBooking: React.FC<AppointmentBookingProps> = ({ initialS
                   </select>
                 </div>
 
-                {/* Payment Options Selection */}
+                {/* Payment Method Selection */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    5. Select Payment Option *
+                    5. Select Payment Method *
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {(['Easypaisa', 'JazzCash', 'Bank Transfer', 'Pay at Clinic'] as PaymentMethod[]).map((pm) => (
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {paymentOptions.map(({ method, label, badge, badgeColor }) => (
                       <button
                         type="button"
-                        key={pm}
-                        onClick={() => setPaymentMethod(pm)}
+                        key={method}
+                        onClick={() => setPaymentMethod(method)}
                         className={`p-3 rounded-xl border text-xs font-semibold text-center transition-all flex flex-col items-center justify-center gap-1 ${
-                          paymentMethod === pm
+                          paymentMethod === method
                             ? 'border-sky-600 bg-sky-50 text-sky-900 shadow-xs ring-2 ring-sky-500/20'
                             : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                         }`}
                       >
-                        <span>{pm}</span>
-                        <span className={`text-[10px] font-medium ${pm === 'Pay at Clinic' ? 'text-amber-600' : 'text-emerald-600'}`}>
-                          {pm === 'Pay at Clinic' ? 'Pending Payment' : 'Instant Paid'}
-                        </span>
+                        <span>{label}</span>
+                        <span className={`text-[10px] font-medium ${badgeColor}`}>{badge}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Transaction Ref / Note if online payment selected */}
-                {paymentMethod !== 'Pay at Clinic' && (
-                  <div className="p-4 rounded-xl bg-sky-50/70 border border-sky-100 space-y-2">
-                    <label className="block text-xs font-semibold text-slate-800">
-                      Transaction ID / Reference Number (Optional):
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., TRX-992104"
-                      value={transactionRef}
-                      onChange={(e) => setTransactionRef(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white text-slate-900"
-                    />
-                    <p className="text-[11px] text-slate-500">
-                      Status will be marked as <strong className="text-emerald-700">Paid</strong> upon submission.
-                    </p>
+                {/* EasyPaisa selected — show account details + required Transaction ID */}
+                {paymentMethod === 'EasyPaisa' && (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
+                    <div className="space-y-1 text-xs">
+                      <p className="font-bold text-emerald-900 flex items-center gap-1.5">
+                        <Wallet className="w-3.5 h-3.5 text-emerald-700" />
+                        Send PKR 1,000 to this EasyPaisa account:
+                      </p>
+                      <div className="bg-white rounded-lg px-3 py-2 border border-emerald-100 flex items-center justify-between">
+                        <div>
+                          <p className="font-mono font-bold text-emerald-800 text-sm">{PAYMENT_ACCOUNTS.easypaisa.accountNumber}</p>
+                          <p className="text-slate-600 text-[11px]">Account Name: <strong>{PAYMENT_ACCOUNTS.easypaisa.accountTitle}</strong></p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyNumber(PAYMENT_ACCOUNTS.easypaisa.accountNumber)}
+                          className="ml-2 p-1.5 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-700 transition-colors"
+                          title="Copy number"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-800 mb-1">
+                        EasyPaisa Transaction ID <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 1234567890"
+                        value={transactionRef}
+                        onChange={(e) => setTransactionRef(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white text-slate-900 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
+                        required
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        After sending, enter the Transaction ID from your EasyPaisa SMS confirmation.
+                      </p>
+                    </div>
                   </div>
                 )}
 
-                {paymentMethod === 'Pay at Clinic' && (
+                {/* JazzCash selected — show account details + required Transaction ID */}
+                {paymentMethod === 'JazzCash' && (
+                  <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 space-y-3">
+                    <div className="space-y-1 text-xs">
+                      <p className="font-bold text-rose-900 flex items-center gap-1.5">
+                        <Wallet className="w-3.5 h-3.5 text-rose-700" />
+                        Send PKR 1,000 to this JazzCash account:
+                      </p>
+                      <div className="bg-white rounded-lg px-3 py-2 border border-rose-100 flex items-center justify-between">
+                        <div>
+                          <p className="font-mono font-bold text-rose-800 text-sm">{PAYMENT_ACCOUNTS.jazzcash.accountNumber}</p>
+                          <p className="text-slate-600 text-[11px]">Account Name: <strong>{PAYMENT_ACCOUNTS.jazzcash.accountTitle}</strong></p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyNumber(PAYMENT_ACCOUNTS.jazzcash.accountNumber)}
+                          className="ml-2 p-1.5 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-700 transition-colors"
+                          title="Copy number"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-800 mb-1">
+                        JazzCash Transaction ID <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., T261234567"
+                        value={transactionRef}
+                        onChange={(e) => setTransactionRef(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white text-slate-900 focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
+                        required
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        After sending, enter the Transaction ID from your JazzCash SMS confirmation.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cash at Clinic notice */}
+                {paymentMethod === 'Cash at Clinic' && (
                   <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                    Status will be marked as <strong className="text-amber-800 font-bold">Pending Payment</strong>. You can settle PKR 1,000 cash at the clinic counter on arrival.
+                    Payment will be collected in <strong className="text-amber-800 font-bold">Cash at the Clinic</strong> on arrival. Your token will be marked as <strong>Pending</strong> until payment is received.
                   </div>
                 )}
 
