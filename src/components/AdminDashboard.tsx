@@ -27,14 +27,23 @@ import {
   SlidersHorizontal,
   Phone,
   User,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AdminDashboardProps {
   onClose: () => void;
   onViewReceipt: (apt: Appointment) => void;
+  onLogout: () => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onViewReceipt }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onViewReceipt, onLogout }) => {
+  const { user, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    onLogout();
+  };
   const getTodayString = (): string => {
     const today = new Date();
     const year = today.getFullYear();
@@ -180,16 +189,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, onViewR
           <button
             onClick={() => refreshData()}
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1"
-            title="Reset Data"
+            title="Refresh Data"
           >
             <RefreshCw className="w-4 h-4" />
+          </button>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
+            title={`Signed in as ${user?.email ?? 'admin'}`}
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Logout</span>
           </button>
 
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors"
           >
-            Close Dashboard
+            Close
           </button>
         </div>
       </div>
